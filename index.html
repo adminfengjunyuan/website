@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>网络测速工具</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #f0f0f0;
+    }
+    button {
+      padding: 15px 32px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 16px;
+      border: none;
+      background-color: #4CAF50;
+      color: white;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    p {
+      margin-top: 20px;
+    }
+    img {
+      display: block;
+      margin: 0 auto;
+      max-width: 100%;
+    }
+  .result {
+      font-size: 24px;
+      font-weight: bold;
+    }
+  .peak {
+      font-size: 18px;
+      color: gray;
+    }
+    #chart {
+      width: 80%;
+      max-width: 600px;
+      height: 300px;
+      margin: 20px auto;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+  <img src="your_speed_test_image.jpg" alt="Speed Test Image">
+  <button onclick="startSpeedTest()">开始测速</button>
+  <p class="result">下载速度：<span id="downloadSpeed">0</span> Mbps</p>
+  <p class="peak">下载峰值：<span id="downloadPeak">0</span> Mbps</p>
+  <p class="result">上传速度：<span id="uploadSpeed">0</span> Mbps</p>
+  <p class="peak">上传峰值：<span id="uploadPeak">0</span> Mbps</p>
+  <p class="result">Ping 值：<span id="pingValue">0</span> ms</p>
+  <canvas id="chart"></canvas>
+  <script>
+    let downloadMaxSpeed = 0;
+    let uploadMaxSpeed = 0;
+    let downloadSpeeds = [];
+    let uploadSpeeds = [];
+    let pingValues = [];
+
+    function startSpeedTest() {
+      // 下载速度测试
+      measureDownloadSpeed();
+      // 上传速度测试
+      measureUploadSpeed();
+      // Ping 值测试
+      measurePing();
+
+      // 定时重复测试
+      setInterval(() => {
+        measureDownloadSpeed();
+        measureUploadSpeed();
+        measurePing();
+      }, 5000);
+    }
+
+    function measureDownloadSpeed() {
+      const startTime = performance.now();
+      const fileSizeInBytes = 10 * 1024 * 1024; // 10MB 文件大小
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', 'largeFile.dat', true);
+      xhr.responseType = 'arraybuffer';
+      xhr.onload = function () {
+        const endTime = performance.now();
+        const durationInSeconds = (endTime - startTime) / 1000;
+        const downloadSpeedInBytesPerSecond = fileSizeInBytes / durationInSeconds;
+        const downloadSpeedInMbps = downloadSpeedInBytesPerSecond / (1024 * 1024);
+        document.getElementById('downloadSpeed').textContent = downloadSpeedInMbps.toFixed(2);
+        downloadSpeeds.push(downloadSpeedInMbps);
+        if (downloadSpeedInMbps > downloadMaxSpeed) {
+          downloadMaxSpeed = downloadSpeedInMbps;
+          document.getElementById('downloadPeak').textContent = downloadMaxSpeed.toFixed(2);
+        }
+        updateChart();
+      };
+      xhr.send();
+    }
+
+    function measureUploadSpeed() {
+      const startTime = performance.now();
+      const fileSizeInBytes = 5 * 1024 * 1024; // 5MB 文件大小
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', 'upload_endpoint', true);
+      xhr.send(createRandomData(fileSizeInBytes));
+      xhr.onload = function () {
+        const endTime = performance.now();
+        const durationInSeconds = (endTime - startTime) / 1000;
+        const uploadSpeedInBytesPerSecond = fileSizeInBytes / durationInSeconds;
+        const uploadSpeedInMbps = uploadSpeedInBytesPerSecond / (1024 * 1024);
+        document.getElementById('uploadSpeed').textContent = uploadSpeedInMbps.toFixed(2);
+        uploadSpeeds.push(uploadSpeedInMbps);
+        if (uploadSpeedInMbps > uploadMaxSpeed) {
+          uploadMaxSpeed = uploadSpeedInMbps;
+          document.getElementById('uploadPeak').textContent = uploadMaxSpeed.toFixed(2);
+        }
+        updateChart();
+      };
+    }
+
+    function createRandomData(size) {
+      const data = new ArrayBuffer(size);
+      const view = new Uint8Array(data);
+      for (let i = 0; i < size; i++) {
+        view[i] = Math.floor(Math.random() * 256);
+      }
+      return data;
+    }
+
+    function measurePing() {
+      const startTime = performance.now();
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', 'ping_endpoint', true);
+      xhr.onload = function () {
+        const endTime = performance.now();
+        const ping = endTime - startTime;
+        document.getElementById('pingValue').textContent = ping.toFixed(2);
+        pingValues.push(ping);
+        updateChart();
+      };
+      xhr.send();
+    }
+
+    function updateChart() {
+      const ctx = document.getElementById('chart').getContext('2d');
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: Array.from({ length: downloadSpeeds.length }, (_, i) => `Test ${i + 1}`),
+          datasets: [
+            {
+              label: '下载速度 (Mbps)',
+              data: downloadSpeeds,
+              borderColor: 'blue',
+              fill: false
+            },
+            {
+              label: '上传速度 (Mbps)',
+              data: uploadSpeeds,
+              borderColor: 'green',
+              fill: false
+            },
+            {
+              label: 'Ping 值 (ms)',
+              data: pingValues,
+              borderColor: 'orange',
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: false
+            }
+          }
+        }
+      });
+    }
+  </script>
+</body>
+
+</html>
